@@ -28,6 +28,8 @@ export function SorteioClient() {
   const eligibleUserIds = useSorteioStore((s) => s.eligibleUserIds);
   const addParticipant = useSorteioStore((s) => s.addParticipant);
   const removeEligibleUser = useSorteioStore((s) => s.removeEligibleUser);
+  const removeUser = useSorteioStore((s) => s.removeUser);
+  const updateUser = useSorteioStore((s) => s.updateUser);
   const updateUserValue = useSorteioStore((s) => s.updateUserValue);
   const resetSession = useSorteioStore((s) => s.resetSession);
 
@@ -43,8 +45,8 @@ export function SorteioClient() {
   } | null>(null);
   const [roundEndChampion, setRoundEndChampion] = useState<User | null>(null);
   const [roundEndModalOpen, setRoundEndModalOpen] = useState(false);
-  const pendingRoundEndRef = useRef<User | null>(null);
-  const prevEligibleSizeRef = useRef<number | null>(null);
+  /** Só abre o modal de ganhador da rodada após salvar valor (≠ 0) deste usuário. */
+  const awaitingRoundSaveUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     void rehydrateSorteioStore();
@@ -55,9 +57,18 @@ export function SorteioClient() {
     [users, eligibleUserIds],
   );
 
+  const totalPremioRodada = useMemo(
+    () => users.reduce((sum, u) => sum + u.value, 0),
+    [users],
+  );
+
   const handleWinner = useCallback(
     (winner: User) => {
       removeEligibleUser(winner.id);
+      const empty = useSorteioStore.getState().eligibleUserIds.length === 0;
+      if (empty) {
+        awaitingRoundSaveUserIdRef.current = winner.id;
+      }
       setModalWinner(winner);
       setRankingSearchPreset((prev) => ({
         userId: winner.id,
@@ -67,20 +78,48 @@ export function SorteioClient() {
     [removeEligibleUser],
   );
 
-  useEffect(() => {
-    const size = eligibleUserIds.length;
-    const prev = prevEligibleSizeRef.current;
-    if (prev !== null && prev > 0 && size === 0 && users.length > 0) {
-      pendingRoundEndRef.current = pickRankingChampion(users);
-    }
-    prevEligibleSizeRef.current = size;
-  }, [eligibleUserIds, users]);
+  const handleUpdateParticipant = useCallback(
+    (userId: string, name: string, gameName: string) => {
+      return updateUser(userId, { name, gameName });
+    },
+    [updateUser],
+  );
+
+  const removeFromSorteio = useCallback(
+    (userId: string) => {
+      if (awaitingRoundSaveUserIdRef.current === userId) {
+        awaitingRoundSaveUserIdRef.current = null;
+      }
+      removeUser(userId);
+    },
+    [removeUser],
+  );
+
+  const handleUpdateUserValue = useCallback(
+    (userId: string, value: number) => {
+      updateUserValue(userId, value);
+      const cents = Math.round(value * 100);
+      if (
+        awaitingRoundSaveUserIdRef.current === userId &&
+        cents !== 0
+      ) {
+        awaitingRoundSaveUserIdRef.current = null;
+        const list = useSorteioStore.getState().users;
+        const ch = pickRankingChampion(list);
+        if (ch) {
+          setRoundEndChampion(ch);
+          setRoundEndModalOpen(true);
+        }
+      }
+    },
+    [updateUserValue],
+  );
 
   const handleConfirmReset = useCallback(() => {
     resetSession();
     setModalWinner(null);
     setRankingSearchPreset(null);
-    pendingRoundEndRef.current = null;
+    awaitingRoundSaveUserIdRef.current = null;
     setRoundEndChampion(null);
     setRoundEndModalOpen(false);
     setResetConfirmOpen(false);
@@ -92,12 +131,6 @@ export function SorteioClient() {
 
   const closeWinnerModal = useCallback(() => {
     setModalWinner(null);
-    const c = pendingRoundEndRef.current;
-    if (c) {
-      pendingRoundEndRef.current = null;
-      setRoundEndChampion(c);
-      setRoundEndModalOpen(true);
-    }
   }, []);
 
   const closeRoundEndModal = useCallback(() => {
@@ -118,6 +151,8 @@ export function SorteioClient() {
         <ParticipantsPanel
           participants={participants}
           onAddParticipant={addParticipant}
+          onUpdateParticipant={handleUpdateParticipant}
+          onRemoveFromSorteio={removeFromSorteio}
           onRequestNewRound={() => setResetConfirmOpen(true)}
           addParticipantDisabled={!canAddParticipant}
           novaRodadaDisabled={!canNovaRodada}
@@ -141,7 +176,7 @@ export function SorteioClient() {
 
         <UserRankSidebar
           users={users}
-          onUpdateUserValue={updateUserValue}
+          onUpdateUserValue={handleUpdateUserValue}
           searchPreset={rankingSearchPreset}
           onClearSearchPreset={clearRankingSearchPreset}
         />
@@ -151,6 +186,7 @@ export function SorteioClient() {
       <RoundChampionModal
         open={roundEndModalOpen}
         champion={roundEndChampion}
+        totalPremioRodada={totalPremioRodada}
         onClose={closeRoundEndModal}
       />
       <ConfirmResetModal

@@ -25,6 +25,7 @@ export function RouletteWheel({
   const [isSpinning, setIsSpinning] = useState(false);
   const [durationMs, setDurationMs] = useState(5200);
   const winnerIndexRef = useRef(0);
+  const participantsAtSpinRef = useRef<User[]>([]);
   const settledRef = useRef(false);
 
   const n = participants.length;
@@ -35,26 +36,29 @@ export function RouletteWheel({
 
     settledRef.current = false;
     setIsSpinning(true);
+    participantsAtSpinRef.current = participants;
     const w = Math.floor(Math.random() * n);
     winnerIndexRef.current = w;
     const segment = 360 / n;
     const jitter = (Math.random() - 0.5) * Math.min(segment * 0.35, 28);
     const spins = 6 + Math.floor(Math.random() * 4);
     const centerAngle = (w + 0.5) * segment + jitter;
-    const offset = (((360 - centerAngle) % 360) + 360) % 360;
-    const delta = spins * 360 + offset;
     const nextDur = 4800 + Math.floor(Math.random() * 1400);
     setDurationMs(nextDur);
-    setRotation((r) => r + delta);
-  }, [n, isSpinning, disabled]);
+    setRotation((r) => {
+      const offsetNeeded = (((-centerAngle - r) % 360) + 360) % 360;
+      return r + spins * 360 + offsetNeeded;
+    });
+  }, [n, isSpinning, disabled, participants]);
 
   const handleTransitionEnd = useCallback(() => {
     if (!isSpinning || settledRef.current) return;
     settledRef.current = true;
     setIsSpinning(false);
-    const u = participants[winnerIndexRef.current];
+    const list = participantsAtSpinRef.current;
+    const u = list[winnerIndexRef.current];
     if (u) onWinner(u);
-  }, [isSpinning, participants, onWinner]);
+  }, [isSpinning, onWinner]);
 
   const canSpin = n >= 1 && !isSpinning && !disabled;
   const segmentDeg = n > 0 ? 360 / n : 0;

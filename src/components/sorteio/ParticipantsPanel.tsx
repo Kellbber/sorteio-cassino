@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmRemoveParticipantModal } from "@/components/sorteio/ConfirmRemoveParticipantModal";
+import { EditParticipantModal } from "@/components/sorteio/EditParticipantModal";
 import { getRouletteSegmentColor } from "@/lib/roulette-segment-colors";
 import type { User } from "@/lib/types";
 
@@ -10,7 +12,9 @@ const LIST_MAX_HEIGHT =
 
 type ParticipantsPanelProps = {
   participants: User[];
-  onAddParticipant: (name: string, gameName: string) => void;
+  onAddParticipant: (name: string, gameName: string) => boolean;
+  onUpdateParticipant: (userId: string, name: string, gameName: string) => boolean;
+  onRemoveFromSorteio: (userId: string) => void;
   onRequestNewRound: () => void;
   /** Controlado pelo store (flags.allowAddParticipant). */
   addParticipantDisabled?: boolean;
@@ -21,6 +25,8 @@ type ParticipantsPanelProps = {
 export function ParticipantsPanel({
   participants,
   onAddParticipant,
+  onUpdateParticipant,
+  onRemoveFromSorteio,
   onRequestNewRound,
   addParticipantDisabled = false,
   novaRodadaDisabled = false,
@@ -28,6 +34,9 @@ export function ParticipantsPanel({
   const [name, setName] = useState("");
   const [gameName, setGameName] = useState("");
   const [addError, setAddError] = useState("");
+  const [editModalError, setEditModalError] = useState("");
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [removingUser, setRemovingUser] = useState<User | null>(null);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +47,12 @@ export function ParticipantsPanel({
       setAddError("Preencha o nome e o nome do jogo.");
       return;
     }
+    const ok = onAddParticipant(n, g);
+    if (!ok) {
+      setAddError("Já existe participante com este nome e jogo.");
+      return;
+    }
     setAddError("");
-    onAddParticipant(n, g);
     setName("");
     setGameName("");
   };
@@ -133,7 +146,7 @@ export function ParticipantsPanel({
           participants.map((u, i) => (
             <li
               key={u.id}
-              className="flex items-center gap-2.5 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2.5 transition hover:border-[#d4af37]/25 hover:bg-white/[0.06]"
+              className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-2.5 transition hover:border-[#d4af37]/25 hover:bg-white/[0.06]"
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#d4af37]/15 text-xs font-bold text-[#d4af37]">
                 {i + 1}
@@ -143,6 +156,58 @@ export function ParticipantsPanel({
                   {u.name}
                 </p>
                 <p className="truncate text-xs text-[#d4af37]/75">{u.gameName}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditModalError("");
+                    setEditingUser(u);
+                  }}
+                  className="rounded-md p-1.5 text-[#d4af37]/80 transition hover:bg-white/10 hover:text-[#f5e6c8]"
+                  title="Editar nome e jogo"
+                  aria-label={`Editar ${u.name}`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                    aria-hidden
+                  >
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRemovingUser(u)}
+                  className="rounded-md p-1.5 text-white/45 transition hover:bg-[#c41e3a]/20 hover:text-[#c41e3a]"
+                  title="Remover do sorteio e do ranking"
+                  aria-label={`Remover ${u.name} do sorteio e do ranking`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                    aria-hidden
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    <line x1="10" x2="10" y1="11" y2="17" />
+                    <line x1="14" x2="14" y1="11" y2="17" />
+                  </svg>
+                </button>
               </div>
               <span
                 className="h-6 w-6 shrink-0 rounded-md border border-white/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_8px_rgba(0,0,0,0.45)] ring-1 ring-black/50"
@@ -154,6 +219,37 @@ export function ParticipantsPanel({
           ))
         )}
       </ul>
+
+      <EditParticipantModal
+        user={editingUser}
+        error={editModalError}
+        onDismissError={() => setEditModalError("")}
+        onCancel={() => {
+          setEditingUser(null);
+          setEditModalError("");
+        }}
+        onConfirm={(n, g) => {
+          if (!editingUser) return;
+          const ok = onUpdateParticipant(editingUser.id, n, g);
+          if (!ok) {
+            setEditModalError("Já existe outro participante com este nome e jogo.");
+            return;
+          }
+          setEditModalError("");
+          setEditingUser(null);
+        }}
+      />
+
+      <ConfirmRemoveParticipantModal
+        open={removingUser !== null}
+        participantName={removingUser?.name ?? ""}
+        onCancel={() => setRemovingUser(null)}
+        onConfirm={() => {
+          if (!removingUser) return;
+          onRemoveFromSorteio(removingUser.id);
+          setRemovingUser(null);
+        }}
+      />
     </aside>
   );
 }

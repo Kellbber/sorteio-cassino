@@ -6,6 +6,7 @@ import {
   persist,
   type StateStorage,
 } from "zustand/middleware";
+import { sameParticipantPair } from "./participant-identity";
 import type { User } from "./types";
 
 export type SorteioFlags = {
@@ -25,8 +26,16 @@ export type SorteioStore = {
   eligibleUserIds: string[];
   flags: SorteioFlags;
 
-  addParticipant: (name: string, gameName: string) => void;
+  /** `false` se já existir o par nome+jogo. */
+  addParticipant: (name: string, gameName: string) => boolean;
   removeEligibleUser: (userId: string) => void;
+  /** Remove o cadastro: sai do sorteio e do ranking. */
+  removeUser: (userId: string) => void;
+  /** `false` se outro usuário já tiver o mesmo nome+jogo. */
+  updateUser: (
+    userId: string,
+    updates: Partial<Pick<User, "name" | "gameName">>,
+  ) => boolean;
   updateUserValue: (userId: string, value: number) => void;
   resetSession: () => void;
   setFlag: <K extends keyof SorteioFlags>(key: K, value: SorteioFlags[K]) => void;
@@ -50,18 +59,22 @@ function getSessionStorage(): StateStorage {
 
 export const useSorteioStore = create<SorteioStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       users: [],
       eligibleUserIds: [],
       flags: { ...defaultFlags },
 
       addParticipant: (name, gameName) => {
+        const trimmedName = name.trim();
+        const trimmedGame = gameName.trim();
+        const dup = get().users.some((u) =>
+          sameParticipantPair(u, { name: trimmedName, gameName: trimmedGame }),
+        );
+        if (dup) return false;
         const id =
           typeof crypto !== "undefined" && crypto.randomUUID
             ? crypto.randomUUID()
             : `u-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        const trimmedName = name.trim();
-        const trimmedGame = gameName.trim();
         const newUser: User = {
           id,
           name: trimmedName,
@@ -72,12 +85,49 @@ export const useSorteioStore = create<SorteioStore>()(
           users: [...s.users, newUser],
           eligibleUserIds: [...s.eligibleUserIds, id],
         }));
+        return true;
       },
 
       removeEligibleUser: (userId) => {
         set((s) => ({
           eligibleUserIds: s.eligibleUserIds.filter((id) => id !== userId),
         }));
+      },
+
+      removeUser: (userId) => {
+        set((s) => ({
+          users: s.users.filter((u) => u.id !== userId),
+          eligibleUserIds: s.eligibleUserIds.filter((id) => id !== userId),
+        }));
+      },
+
+      updateUser: (userId, updates) => {
+        const s = get();
+        const target = s.users.find((u) => u.id === userId);
+        if (!target) return false;
+        const nextName =
+          updates.name !== undefined ? updates.name.trim() : target.name;
+        const nextGame =
+          updates.gameName !== undefined
+            ? updates.gameName.trim()
+            : target.gameName;
+        const dup = s.users.some(
+          (u) =>
+            u.id !== userId &&
+            sameParticipantPair(u, { name: nextName, gameName: nextGame }),
+        );
+        if (dup) return false;
+        set((st) => ({
+          users: st.users.map((u) => {
+            if (u.id !== userId) return u;
+            return {
+              ...u,
+              name: nextName,
+              gameName: nextGame,
+            };
+          }),
+        }));
+        return true;
       },
 
       updateUserValue: (userId, value) => {

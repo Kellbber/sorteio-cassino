@@ -13,12 +13,15 @@ const formatBrl = (n: number) =>
 type RoundChampionModalProps = {
   open: boolean;
   champion: User | null;
+  /** Soma dos valores de todos na mesa — o ganhador leva o total. */
+  totalPremioRodada: number;
   onClose: () => void;
 };
 
 export function RoundChampionModal({
   open,
   champion,
+  totalPremioRodada,
   onClose,
 }: RoundChampionModalProps) {
   if (!open || !champion) return null;
@@ -60,15 +63,16 @@ export function RoundChampionModal({
 
         <div className="mt-8 rounded-xl border border-[#d4af37]/35 bg-[#d4af37]/10 px-5 py-5">
           <p className="text-center text-[10px] font-semibold uppercase tracking-[0.3em] text-[#d4af37]/85">
-            Total do prêmio do ganhador
+            Total do prêmio (ganhador leva tudo)
           </p>
           <p className="mt-2 text-center font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums tracking-tight text-[#e8c547] drop-shadow-[0_0_20px_rgba(212,175,55,0.35)] sm:text-4xl">
-            {formatBrl(champion.value)}
+            {formatBrl(totalPremioRodada)}
           </p>
         </div>
 
         <p className="mt-6 text-center text-sm text-white/50">
-          Quem ficou em 1º no ranking por valor acumulado nesta rinha.
+          Quem ficou em 1º no ranking nesta rinha — o valor acima é a soma de todos
+          os prêmios registrados na mesa.
         </p>
 
         <button

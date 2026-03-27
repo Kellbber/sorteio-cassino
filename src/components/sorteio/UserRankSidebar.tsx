@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatParticipantSearchLabel } from "@/lib/participant-identity";
 import type { User } from "@/lib/types";
 
 /** ~8 linhas (ranking com 3 linhas de texto por item). */
@@ -37,10 +38,17 @@ export function UserRankSidebar({
     if (!searchPreset) return;
     const u = users.find((x) => x.id === searchPreset.userId);
     if (!u) return;
-    setQuery(u.name);
-    /* Só ao novo sorteio — não depender de `users` ou o nome volta após salvar valor. */
+    setQuery(formatParticipantSearchLabel(u));
+    /* Só ao novo sorteio (nonce) — não incluir `users` para não sobrescrever a busca ao editar valores. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchPreset]);
+
+  useEffect(() => {
+    if (!searchPreset || !onClearSearchPreset) return;
+    if (!users.some((x) => x.id === searchPreset.userId)) {
+      onClearSearchPreset();
+    }
+  }, [searchPreset, users, onClearSearchPreset]);
 
   const ranked = useMemo(
     () => [...users].sort((a, b) => b.value - a.value),
@@ -52,20 +60,51 @@ export function UserRankSidebar({
     [users],
   );
 
-  const q = query.trim().toLowerCase();
-  const matches = useMemo(() => {
-    if (!q) return [];
-    return ranked.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.gameName.toLowerCase().includes(q),
-    );
-  }, [ranked, q]);
+  const qTrim = query.trim();
+  const qLower = qTrim.toLowerCase();
 
-  const selected =
-    matches.length === 1 ? matches[0] : matches.find((u) => u.name === query);
+  const presetUser =
+    searchPreset !== null
+      ? users.find((x) => x.id === searchPreset.userId)
+      : undefined;
+
+  const matches = useMemo(() => {
+    if (!qTrim) return [];
+    return ranked.filter((u) => {
+      const label = formatParticipantSearchLabel(u);
+      if (label.toLowerCase() === qLower) return true;
+      return (
+        u.name.toLowerCase().includes(qLower) ||
+        u.gameName.toLowerCase().includes(qLower)
+      );
+    });
+  }, [ranked, qTrim, qLower]);
+
+  const selected = useMemo((): User | undefined => {
+    if (presetUser && searchPreset) return presetUser;
+    if (!qTrim) return undefined;
+    const exact = ranked.find(
+      (u) => formatParticipantSearchLabel(u) === qTrim,
+    );
+    if (exact) return exact;
+    if (matches.length === 1) return matches[0];
+    return undefined;
+  }, [presetUser, searchPreset, qTrim, matches, ranked]);
 
   const selectedId = selected?.id ?? null;
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (!searchPreset || !onClearSearchPreset) return;
+    const u = users.find((x) => x.id === searchPreset.userId);
+    if (!u) {
+      onClearSearchPreset();
+      return;
+    }
+    if (formatParticipantSearchLabel(u) !== value.trim()) {
+      onClearSearchPreset();
+    }
+  };
 
   useEffect(() => {
     if (!selectedId) {
@@ -100,7 +139,8 @@ export function UserRankSidebar({
           Ranking
         </h2>
         <p className="mt-1 text-xs text-white/45">
-          Maior valor primeiro — pesquise acima da lista para ajustar saldo.
+          Maior valor primeiro — use “Nome · Jogo” para distinguir quem tem nome
+          parecido.
         </p>
       </div>
 
@@ -120,20 +160,18 @@ export function UserRankSidebar({
         <input
           type="search"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-          }}
-          placeholder="Nome ou jogo…"
+          onChange={(e) => handleQueryChange(e.target.value)}
+          placeholder="Nome, jogo ou Nome · Jogo…"
           className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#d4af37]/50 focus:outline-none focus:ring-1 focus:ring-[#d4af37]/40"
         />
 
-        {q && matches.length > 1 && (
+        {qTrim && matches.length > 1 && (
           <ul className="custom-scrollbar mt-2 max-h-28 overflow-y-auto rounded-lg border border-white/10 bg-black/50">
             {matches.slice(0, 8).map((u) => (
               <li key={u.id}>
                 <button
                   type="button"
-                  onClick={() => setQuery(u.name)}
+                  onClick={() => setQuery(formatParticipantSearchLabel(u))}
                   className="w-full px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10"
                 >
                   {u.name}{" "}
@@ -145,10 +183,11 @@ export function UserRankSidebar({
           </ul>
         )}
 
-        {selected && q && (
+        {selected && qTrim && (
           <div className="mt-3 space-y-2">
             <label className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
-              Novo valor (R$) — {selected.name}
+              Novo valor (R$) — {selected.name}{" "}
+              <span className="text-white/35">· {selected.gameName}</span>
             </label>
             <input
               type="text"
@@ -167,7 +206,7 @@ export function UserRankSidebar({
           </div>
         )}
 
-        {q && matches.length === 0 && (
+        {qTrim && matches.length === 0 && (
           <p className="mt-2 text-xs text-[#c41e3a]/90">Nenhum usuário encontrado.</p>
         )}
       </div>
