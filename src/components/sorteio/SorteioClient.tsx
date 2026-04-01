@@ -11,6 +11,7 @@ import {
   useSorteioStore,
 } from "@/lib/sorteio-store";
 import { ConfirmResetModal } from "./ConfirmResetModal";
+import { GameSuggestionControl } from "./GameSuggestionControl";
 import { MesaControls } from "./MesaControls";
 import { ParticipantsPanel } from "./ParticipantsPanel";
 import { RoundChampionModal } from "./RoundChampionModal";
@@ -156,17 +157,24 @@ export function SorteioClient() {
           onRequestNewRound={() => setResetConfirmOpen(true)}
           addParticipantDisabled={!canAddParticipant}
           novaRodadaDisabled={!canNovaRodada}
+          className="order-2 lg:order-1"
         />
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center border-[#d4af37]/10 bg-gradient-to-b from-[#0a0e18]/95 via-[#0d111c] to-[#05070d]/95 py-6 lg:border-x lg:border-y-0">
-          <header className="mb-2 text-center lg:mb-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.5em] text-[#c41e3a]/90">
-              Cassino
-            </p>
-            <h1 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[#f5e6c8] sm:text-3xl">
-              Roleta da rinha
-            </h1>
-          </header>
+        <main className="order-1 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-start border-[#d4af37]/10 bg-gradient-to-b from-[#0a0e18]/95 via-[#0d111c] to-[#05070d]/95 px-3 py-6 sm:px-5 lg:order-2 lg:self-start lg:border-x lg:border-y-0">
+          <div className="mb-2 grid w-full max-w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-1 sm:gap-x-3 lg:mb-0">
+            <span className="min-w-0" aria-hidden />
+            <header className="min-w-0 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.5em] text-[#c41e3a]/90">
+                Cassino
+              </p>
+              <h1 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[#f5e6c8] sm:text-3xl">
+                Roleta da rinha
+              </h1>
+            </header>
+            <div className="flex min-w-0 justify-end pt-0.5">
+              <GameSuggestionControl />
+            </div>
+          </div>
           <RouletteWheel
             participants={participants}
             onWinner={handleWinner}
@@ -179,6 +187,7 @@ export function SorteioClient() {
           onUpdateUserValue={handleUpdateUserValue}
           searchPreset={rankingSearchPreset}
           onClearSearchPreset={clearRankingSearchPreset}
+          className="order-3"
         />
       </div>
 

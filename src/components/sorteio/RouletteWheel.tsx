@@ -64,8 +64,8 @@ export function RouletteWheel({
   const segmentDeg = n > 0 ? 360 / n : 0;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-10 px-4 py-8">
-      <div className="relative">
+    <div className="flex flex-col items-center justify-start gap-10 py-8">
+      <div className="relative w-fit">
         <div
           className="pointer-events-none absolute -top-1 left-1/2 z-20 -translate-x-1/2"
           aria-hidden

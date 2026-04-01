@@ -20,6 +20,7 @@ type ParticipantsPanelProps = {
   addParticipantDisabled?: boolean;
   /** Controlado pelo store (flags + há usuários). */
   novaRodadaDisabled?: boolean;
+  className?: string;
 };
 
 export function ParticipantsPanel({
@@ -30,6 +31,7 @@ export function ParticipantsPanel({
   onRequestNewRound,
   addParticipantDisabled = false,
   novaRodadaDisabled = false,
+  className,
 }: ParticipantsPanelProps) {
   const [name, setName] = useState("");
   const [gameName, setGameName] = useState("");
@@ -58,7 +60,9 @@ export function ParticipantsPanel({
   };
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col border-[#d4af37]/20 bg-[#06080f]/90 shadow-[0_-8px_40px_rgba(0,0,0,0.35)] backdrop-blur-md lg:max-w-[300px] lg:border-r lg:shadow-[12px_0_40px_rgba(0,0,0,0.35)]">
+    <aside
+      className={`flex h-full min-h-0 w-full flex-col border-[#d4af37]/20 bg-[#06080f]/90 shadow-[0_-8px_40px_rgba(0,0,0,0.35)] backdrop-blur-md lg:max-w-[300px] lg:border-r lg:shadow-[12px_0_40px_rgba(0,0,0,0.35)] ${className ?? ""}`}
+    >
       <div className="border-b border-[#d4af37]/15 px-5 py-4">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-wide text-[#f5e6c8]">
           No sorteio

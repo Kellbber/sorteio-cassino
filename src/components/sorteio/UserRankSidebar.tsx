@@ -23,6 +23,7 @@ type UserRankSidebarProps = {
   searchPreset?: { userId: string; nonce: number } | null;
   /** Chamado após salvar valor para limpar preset e não reabrir a pesquisa. */
   onClearSearchPreset?: () => void;
+  className?: string;
 };
 
 export function UserRankSidebar({
@@ -30,6 +31,7 @@ export function UserRankSidebar({
   onUpdateUserValue,
   searchPreset = null,
   onClearSearchPreset,
+  className,
 }: UserRankSidebarProps) {
   const [query, setQuery] = useState("");
   const [editValue, setEditValue] = useState("");
@@ -133,7 +135,9 @@ export function UserRankSidebar({
   };
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col border-b border-[#d4af37]/20 bg-[#06080f]/90 shadow-[0_8px_40px_rgba(0,0,0,0.35)] backdrop-blur-md lg:max-w-[300px] lg:border-b-0 lg:border-l lg:shadow-[-12px_0_40px_rgba(0,0,0,0.35)]">
+    <aside
+      className={`flex h-full min-h-0 w-full flex-col border-b border-[#d4af37]/20 bg-[#06080f]/90 shadow-[0_8px_40px_rgba(0,0,0,0.35)] backdrop-blur-md lg:max-w-[300px] lg:border-b-0 lg:border-l lg:shadow-[-12px_0_40px_rgba(0,0,0,0.35)] ${className ?? ""}`}
+    >
       <div className="border-b border-[#d4af37]/15 px-5 py-4">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-wide text-[#f5e6c8]">
           Ranking
