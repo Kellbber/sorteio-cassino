@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@/lib/types";
 
 type WinnerModalProps = {
@@ -8,6 +9,37 @@ type WinnerModalProps = {
 };
 
 export function WinnerModal({ winner, onClose }: WinnerModalProps) {
+  const [showCopied, setShowCopied] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopyGameName = async () => {
+    if (!winner?.gameName) return;
+
+    try {
+      await navigator.clipboard.writeText(winner.gameName);
+      setShowCopied(true);
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        setShowCopied(false);
+        timeoutRef.current = null;
+      }, 3000);
+    } catch (err) {
+      console.error("Falha ao copiar:", err);
+    }
+  };
+
   if (!winner) return null;
 
   return (
@@ -37,10 +69,38 @@ export function WinnerModal({ winner, onClose }: WinnerModalProps) {
           {winner.name}
         </h2>
         {winner.gameName ? (
-          <p className="mt-2 text-center text-sm font-medium text-[#d4af37]/90">
-            Jogo: {winner.gameName}
-          </p>
+          <div className="mt-2 flex items-center justify-center gap-3">
+            <p className="text-center text-sm font-medium text-[#d4af37]/90">
+              Jogo: {winner.gameName}
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyGameName}
+              className="inline-flex items-center justify-center rounded-lg bg-[#d4af37]/20 p-2 transition hover:bg-[#d4af37]/40 active:scale-95"
+              title="Copiar nome do jogo"
+              aria-label="Copiar nome do jogo"
+            >
+              <svg
+                className="h-4 w-4 text-[#d4af37]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+            </button>
+          </div>
         ) : null}
+        {showCopied && (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-green-600/70 px-4 py-2 text-center text-sm font-medium text-white backdrop-blur-sm transition-opacity duration-300">
+            Copiado!
+          </div>
+        )}
         <p className="mt-2 text-center text-sm text-white/55">
           Sairá da lista de participantes desta rodada. O cadastro permanece à
           direita no ranking.
